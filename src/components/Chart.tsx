@@ -92,28 +92,30 @@ export default function ChartFromFile() {
       ctx.stroke();
       ctx.fillText(tick.toFixed(2), -10, y);
     });
-
+    
     // X Axis
     ctx.beginPath();
     ctx.moveTo(0, height);
     ctx.lineTo(width, height);
     ctx.stroke();
-
+    
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     categories.forEach((cat) => {
+      const replace=(cat:string)=>{ 
+        return cat.replace("R0-%-","")
+      }
       const x = (xScale(cat) ?? 0) + xScale.bandwidth() / 2;
-      ctx.fillText(cat, x, height + 5);
+      ctx.fillText(replace(cat), x, height + 5);
     });
-
     const groupColors: Record<string, string> = {
       NO_GROUP: '#0FF0FC',
       TOTAL_GROUP: 'tomato',
       AVERAGE_GROUP: 'green',
     };
-
+    
     const color = groupColors[visibleGroup] ?? 'gray';
-
+    
     // Draw line
     ctx.beginPath();
     ctx.strokeStyle = color;
@@ -127,7 +129,7 @@ export default function ChartFromFile() {
       else ctx.lineTo(x, y);
     });
     ctx.stroke();
-
+    
     // Draw points and labels
     group.forEach((entry) => {
       const ac = data.dataRowMapping[entry.dataRowId]?.AC;
