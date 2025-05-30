@@ -32,17 +32,18 @@ type ChartData = {
 
 export default function ChartFromFile() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-
+  
   // Offscreen canvases refs
   const offscreenLineCanvas = useRef<HTMLCanvasElement | null>(null);
   const offscreenQualityCanvas = useRef<HTMLCanvasElement | null>(null);
-
+  
   const [data, setData] = useState<ChartData | null>(null);
   const [visibleGroup, setVisibleGroup] = useState<string>('NO_GROUP');
   const [selectedChartType, setSelectedChartType] = useState<string>('GChart');
-
+  
   useEffect(() => {
     if (!data || !canvasRef.current) return;
+    const replace = (cat: string) => cat.replace("R0-%-", "");
 
     const ratio = window.devicePixelRatio || 1;
     const logicalWidth = 900;
@@ -146,7 +147,6 @@ export default function ChartFromFile() {
     qualityCtx.textAlign = 'center';
     qualityCtx.textBaseline = 'top';
     categories.forEach((cat) => {
-      const replace = (cat: string) => cat.replace("R0-%-", "");
       const x = (xScale(cat) ?? 0) + xScale.bandwidth() / 2;
       qualityCtx.fillText(replace(cat), x, height + 5);
     });
@@ -216,6 +216,56 @@ export default function ChartFromFile() {
 
     //line 
     mainCtx.drawImage(offscreenLineCanvas.current, 0, 0, logicalWidth, logicalHeight);
+//=========================================================================================================
+//Tooltip
+
+    const tooltip = document.getElementById('tooltip');
+    if (!tooltip) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const rect = mainCanvas.getBoundingClientRect();
+
+
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      const x = mouseX - margin.left;
+      const y = mouseY - margin.top;
+      let found = false;
+
+      group.forEach((entry) => {
+        const ac = data.dataRowMapping[entry.dataRowId]?.AC;
+        if (typeof ac !== 'number') return;
+
+        const px = (xScale(entry.categoryId) ?? 0) + xScale.bandwidth() / 2;
+        const py = yScale(ac);
+        const dx = x - px;
+        const dy = y - py;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance < 6) {
+          tooltip.style.display = 'block';
+          tooltip.style.left = `${e.clientX + 10}px`;
+          tooltip.style.top = `${e.clientY - 30}px`;
+          tooltip.innerHTML = `<strong>${replace(entry.categoryId)}</strong><br/>AC: ${ac.toFixed(2)}`;
+          found = true;
+        }
+      });
+
+      if (!found) tooltip.style.display = 'none';
+    };
+
+    const handleMouseLeave = () => {
+      tooltip.style.display = 'none';
+    };
+
+    mainCanvas.addEventListener('mousemove', handleMouseMove);
+    mainCanvas.addEventListener('mouseleave', handleMouseLeave);
+
+    return () => {
+      mainCanvas.removeEventListener('mousemove', handleMouseMove);
+      mainCanvas.removeEventListener('mouseleave', handleMouseLeave);
+    };
+
 
   }, [data, visibleGroup, selectedChartType]);
 
@@ -254,6 +304,17 @@ export default function ChartFromFile() {
         </>
       )}
       <canvas ref={canvasRef} className="chart-canvas" />
+      <div id='tooltip' style={{
+    position: 'absolute',
+    display: 'none',
+    background: 'rgba(0, 0, 0, 0.75)',
+    color: 'white',
+    padding: '5px 10px',
+    borderRadius: '4px',
+    pointerEvents: 'none',
+    fontSize: '12px',
+    zIndex: 10,
+  }}></div>
     </div>
   );
 }
